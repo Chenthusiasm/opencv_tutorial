@@ -1,27 +1,33 @@
-// https://docs.opencv.org/4.11.0/db/deb/tutorial_display_image.html
+// https://www.computervision.zone/topic/chapter-2-basic-functions-2/
 
 #include "DisplayImage.h"
  
 using namespace cv;
+using namespace std;
  
-int main()
-{
-    std::string image_path = samples::findFile("starry_night.jpg");
-    Mat img = imread(image_path, IMREAD_COLOR);
- 
-    if(img.empty())
-    {
-        std::cout << "Could not read the image: " << image_path << std::endl;
-        return 1;
-    }
- 
-    imshow("Display window", img);
-    int k = waitKey(0); // Wait for a keystroke in the window
- 
-    if(k == 's')
-    {
-        imwrite("starry_night.png", img);
-    }
- 
+///////////////  Basic Functions  //////////////////////
+
+int main() {
+
+	string path = "assets/test.png";
+	Mat img = imread(path);
+	Mat imgGray, imgBlur, imgCanny, imgDil, imgErode;
+
+	cvtColor(img, imgGray, COLOR_BGR2GRAY);
+	GaussianBlur(imgGray, imgBlur, Size(7, 7), 5, 0);
+	Canny(imgBlur, imgCanny, 25,75);
+
+	Mat kernel = getStructuringElement(MORPH_RECT, Size(3, 3));
+	dilate(imgCanny, imgDil, kernel);
+	erode(imgDil, imgErode, kernel);
+
+	imshow("Image", img);
+	imshow("Image Gray", imgGray);
+	imshow("Image Blur", imgBlur);
+	imshow("Image Canny", imgCanny);
+	imshow("Image Dilation", imgDil);
+	imshow("Image Erode", imgErode);
+	waitKey(0);
+
     return 0;
 }
