@@ -1,5 +1,5 @@
 cmake_minimum_required( VERSION 2.8 )
-project( opencv-tutorial )
+project( opencv-tutorial LANGUAGES C CXX)
 
 set( CMAKE_C_FLAGS "-std=gnu99 -Wall -Wextra -Wuninitialized \
 	-Wunused-variable -Wno-double-promotion -Wmissing-prototypes \
