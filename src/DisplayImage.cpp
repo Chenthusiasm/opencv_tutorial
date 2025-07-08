@@ -1,56 +1,42 @@
-// https://docs.opencv.org/4.5.5/d2/d0a/tutorial_introduction_to_tracker.html
-#include <opencv2/core/utility.hpp>
-#include <opencv2/imgproc.hpp>
-#include <opencv2/tracking.hpp>
-#include <opencv2/videoio.hpp>
-#include <opencv2/highgui.hpp>
-#include <iostream>
-#include <cstring>
-using namespace std;
+// https://docs.opencv.org/4.5.5/d4/d70/tutorial_hough_circle.html
+
+#include "DisplayImage.h"
+
 using namespace cv;
-int main( int argc, char** argv ){
-  	// show help
-  	if(argc<2){
-    	cout<<
-      		" Usage: DisplayImage <video_name>\n"
-			" examples:\n"
-			" example_tracking_kcf Bolt/img/%04d.jpg\n"
-			" example_tracking_kcf faceocc2.webm\n"
-			<< endl;
-    	return 0;
-	}
-	// declares all required variables
-	Rect roi;
-	Mat frame;
-	// create a tracker object
-	Ptr<Tracker> tracker = TrackerKCF::create();
-	// set input video
-	std::string video = argv[1];
-	VideoCapture cap(video);
-	// get bounding box
-	cap >> frame;
-	roi=selectROI("tracker",frame);
-	//quit if ROI was not selected
-	if(roi.width==0 || roi.height==0)
-		return 0;
-	// initialize the tracker
-	tracker->init(frame,roi);
-	// perform the tracking process
-	printf("Start the tracking process, press ESC to quit.\n");
-	for ( ;; ){
-		// get frame from the video
-		cap >> frame;
-		// stop the program if no more images
-		if(frame.rows==0 || frame.cols==0)
-		break;
-		// update the tracking result
-		tracker->update(frame,roi);
-		// draw the tracked object
-		rectangle( frame, roi, Scalar( 255, 0, 0 ), 2, 1 );
-		// show image with the tracked object
-		imshow("tracker",frame);
-		//quit on ESC button
-		if(waitKey(1)==27)break;
-	}
-	return 0;
+using namespace std;
+int main(int argc, char** argv)
+{
+    const char* filename = argc >=2 ? argv[1] : "smarties.png";
+    // Loads an image
+    Mat src = imread( samples::findFile( filename ), IMREAD_COLOR );
+    // Check if image is loaded fine
+    if(src.empty()){
+        printf(" Error opening image\n");
+        printf(" Program Arguments: [image_name -- default %s] \n", filename);
+        return EXIT_FAILURE;
+    }
+    Mat gray;
+    cvtColor(src, gray, COLOR_BGR2GRAY);
+    medianBlur(gray, gray, 5);
+    vector<Vec3f> circles;
+    HoughCircles(gray, circles, HOUGH_GRADIENT, 1,
+                 gray.rows/16,  // change this value to detect circles with different distances to each other
+                 100, 30, 1, 30 // change the last two parameters
+            // (min_radius & max_radius) to detect larger circles
+    );
+    for( size_t i = 0; i < circles.size(); i++ )
+    {
+        Vec3i c = circles[i];
+        Point center = Point(c[0], c[1]);
+        // circle center
+        circle( src, center, 1, Scalar(0,255,0), 3, LINE_AA);
+        // circle outline
+        int radius = c[2];
+        circle( src, center, radius, Scalar(0,0,255), 3, LINE_AA);
+		// print circle data to terminal
+		printf("[%lu]: (%d, %d) r=%d\n", i, c[0], c[1], c[2]);
+    }
+    imshow("detected circles", src);
+    waitKey();
+    return EXIT_SUCCESS;
 }
