@@ -15,12 +15,23 @@ int main(int argc, char** argv)
         printf(" Program Arguments: [image_name -- default %s] \n", filename);
         return EXIT_FAILURE;
     }
+    
+    int rows = src.rows;
+    int cols = src.cols;
+    printf("%s: rows=%d, cols=%d\n", filename, rows, cols);
+    // Size srcSize = src.size();
+    // rows = srcSize.height;
+    // cols = srcSize.width;
+    // printf("%s: height=%d, width=%d\n", filename, rows, cols);
     Mat gray;
     cvtColor(src, gray, COLOR_BGR2GRAY);
-    medianBlur(gray, gray, 5);
+    imshow("grayscale", gray);
+    Mat blurred;
+    medianBlur(gray, blurred, 5);
+    imshow("median blurred", blurred);
     vector<Vec3f> circles;
-    HoughCircles(gray, circles, HOUGH_GRADIENT, 1,
-                 gray.rows/16,  // change this value to detect circles with different distances to each other
+    HoughCircles(blurred, circles, HOUGH_GRADIENT, 1,
+                 blurred.rows/16,  // change this value to detect circles with different distances to each other
                  100, 30, 1, 30 // change the last two parameters
             // (min_radius & max_radius) to detect larger circles
     );
@@ -36,6 +47,7 @@ int main(int argc, char** argv)
 		// print circle data to terminal
 		printf("[%lu]: (%d, %d) r=%d\n", i, c[0], c[1], c[2]);
     }
+    
     imshow("detected circles", src);
     waitKey();
     return EXIT_SUCCESS;
