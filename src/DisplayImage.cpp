@@ -1,13 +1,10 @@
 // https://docs.opencv.org/4.5.5/d2/d0a/tutorial_introduction_to_tracker.html
-#include <opencv2/core/utility.hpp>
-#include <opencv2/imgproc.hpp>
-#include <opencv2/tracking.hpp>
-#include <opencv2/videoio.hpp>
-#include <opencv2/highgui.hpp>
-#include <iostream>
-#include <cstring>
+
+#include "DisplayImage.h"
+
 using namespace std;
 using namespace cv;
+
 int main( int argc, char** argv ){
   	// show help
   	if(argc<2){
