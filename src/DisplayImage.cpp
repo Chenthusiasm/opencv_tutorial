@@ -5,10 +5,11 @@
 using namespace cv;
 using namespace std;
 
-String detectedCirclesTitle = "detected circles";
-String grayscaleTitle = "grayscale";
-String blurredTitle = "blurred (median)";
-String redChannelTitle = "red channel";
+static String detectedCirclesTitle = "detected circles";
+static String grayscaleTitle = "grayscale";
+static String blurredTitle = "blurred (median)";
+static String redChannelTitle = "red channel";
+static int blurKSize = 11;
 
 int main(int argc, char** argv)
 {
@@ -20,7 +21,7 @@ int main(int argc, char** argv)
 			" DisplayImage Bolt/img/%04d.jpg\n"
 			" DisplayImage faceocc2.webm\n"
 			<< endl;
-    	return 0;
+    	return EXIT_FAILURE;
 	}
 
     // declare variables
@@ -39,29 +40,24 @@ int main(int argc, char** argv)
         }
 
         Mat gray;
-        Mat redChannel;
+        //Mat redChannel;
         Mat blurred;
-        //vector<Mat> channels(3);
-        //split(frame, channels);
-        // zero out blue channel
-        //channels[0]=Mat::zeros(Size(frame.rows, frame.cols), CV_8UC1);
-        // zero out green channel
-        //channels[1]=Mat::zeros(Size(frame.rows, frame.cols), CV_8UC1);
-        //imshow("blue", channels[0]);
-        //imshow("green", channels[1]);
-        //imshow("red", channels[2]);
-        //merge(channelVector, redChannel);
-        //imshow(redChannelTitle, redChannel);
-
+        #if 1
+        vector<Mat> channels(3);
+        split(frame, channels);
+        imshow("red", channels[2]);
+        medianBlur(channels[2], blurred, blurKSize);
+        #else
         cvtColor(frame, gray, COLOR_BGR2GRAY);
         imshow(grayscaleTitle, gray);
-        medianBlur(gray, blurred, 25);
+        medianBlur(gray, blurred, blurKSize);
+        #endif
         imshow(blurredTitle, blurred);
 
         vector<Vec3f> circles;
         HoughCircles(blurred, circles, HOUGH_GRADIENT, 1,
             blurred.rows/10,
-            90, 90/3, 5, 100
+            90, 90/3, 10, 50
         );
 
         for(size_t j = 0; j < circles.size(); ++j) {
@@ -76,6 +72,7 @@ int main(int argc, char** argv)
             //printf("[%lu-%lu]: (%d, %d) r=%d\n", i, j, c[0], c[1], c[2]);
         }
 
+        // show the image
         imshow(detectedCirclesTitle, frame);
         // quit on ESC button
         if (waitKey(1) == 27) {
