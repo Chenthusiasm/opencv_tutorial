@@ -5,11 +5,15 @@
 using namespace cv;
 using namespace std;
 
-static String detectedCirclesTitle = "detected circles";
-static String grayscaleTitle = "grayscale";
-static String blurredTitle = "blurred (median)";
-static String redChannelTitle = "red channel";
-static int blurKSize = 11;
+static String const detectedCirclesTitle = "detected circles";
+static String const grayscaleTitle = "grayscale";
+static String const blurredTitle = "blurred (median)";
+static String const redChannelTitle = "red channel";
+static String const subImageTitle = "sub image";
+
+// note that the K size must be an odd number
+static int const blurKSize = 11;
+static int const subImageBorder = 0;
 
 int main(int argc, char** argv)
 {
@@ -45,14 +49,14 @@ int main(int argc, char** argv)
         #if 1
         vector<Mat> channels(3);
         split(frame, channels);
-        imshow("red", channels[2]);
+        //imshow("red", channels[2]);
         medianBlur(channels[2], blurred, blurKSize);
         #else
         cvtColor(frame, gray, COLOR_BGR2GRAY);
-        imshow(grayscaleTitle, gray);
+        //imshow(grayscaleTitle, gray);
         medianBlur(gray, blurred, blurKSize);
         #endif
-        imshow(blurredTitle, blurred);
+        //imshow(blurredTitle, blurred);
 
         vector<Vec3f> circles;
         HoughCircles(blurred, circles, HOUGH_GRADIENT, 1,
@@ -62,8 +66,30 @@ int main(int argc, char** argv)
 
         for(size_t j = 0; j < circles.size(); ++j) {
             Vec3i c = circles[j];
-            Point center = Point(c[0], c[1]);
+            
+            // verify that each circle falls within the color thresholds
+            int width = (c[2] + subImageBorder) * 2;
+            int height = (c[2] + subImageBorder) * 2;
+            int x = max(c[0] - (c[2] + subImageBorder), 0);
+            int y = max(c[1] - (c[2] + subImageBorder), 0);
+            if ((x + width) >= frame.cols) {
+                width = max(frame.cols - x - 1, 0);
+            }
+            if ((y + height) >= frame.rows) {
+                height = max(frame.rows - y - 1, 0);
+            }
+            if ((width <= 0) || (height <= 0)) {
+                printf("ERROR: (x, y) = (%d, %d) width = %d, height = %d\n", x, y, width, height);
+            }
+            // create a cropped sub-image
+            Mat subImage = frame(Rect(x, y, width, height));
+            // convert image to HSV color
+            Mat subImageHSV;
+            cvtColor(subImage, subImageHSV, COLOR_BGR2HSV);
+            //imshow(subImageTitle, subImageHSV);
+
             // circle center
+            Point center = Point(c[0], c[1]);
             circle(frame, center, 1, Scalar(0,255,0), 3, LINE_AA);
             // circle outline
             int radius = c[2];
