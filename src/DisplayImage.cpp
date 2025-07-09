@@ -35,7 +35,7 @@ int main(int argc, char** argv)
 	std::string video = argv[1];
 	VideoCapture cap(video);
     
-    for ( size_t i; ; ++i ) {
+    for (size_t i = 0; ; ++i) {
         cap >> frame;
 
         // stop the program if there are no more images
@@ -61,7 +61,7 @@ int main(int argc, char** argv)
         vector<Vec3f> circles;
         HoughCircles(blurred, circles, HOUGH_GRADIENT, 1,
             blurred.rows/10,
-            90, 90/3, 10, 50
+            90, 90/3, 10, 300
         );
 
         for(size_t j = 0; j < circles.size(); ++j) {
@@ -83,17 +83,32 @@ int main(int argc, char** argv)
             }
             // create a cropped sub-image
             Mat subImage = frame(Rect(x, y, width, height));
+            // invert the image
+            Mat inverseImage = ~subImage;
             // convert image to HSV color
-            Mat subImageHSV;
-            cvtColor(subImage, subImageHSV, COLOR_BGR2HSV);
-            //imshow(subImageTitle, subImageHSV);
+            Mat inverseHSV;
+            cvtColor(inverseImage, inverseHSV, COLOR_BGR2HSV);
+            Mat mask;
+            inRange(inverseHSV, Scalar(90 - 10, 64, 32), Scalar(90 + 10, 255, 255), mask);
+            int count = countNonZero(mask);
+            size_t pixels = inverseHSV.total();
+            double activePercent = (double)count / (double)pixels;
+            //printf("[%lu-%lu]: %d / %ld = %0.3lf%%\n", i, j, count, pixels, activePercent);
+            if (activePercent < 0.25) {
+                continue;
+            }
+
+            imshow(subImageTitle, subImage);
+            // if ((activePercent > 0.10) && (activePercent < 0.50)) {
+            //     waitKey(0);
+            // }
 
             // circle center
             Point center = Point(c[0], c[1]);
             circle(frame, center, 1, Scalar(0,255,0), 3, LINE_AA);
             // circle outline
             int radius = c[2];
-            circle(frame, center, radius, Scalar(0,0,255), 3, LINE_AA);
+            circle(frame, center, radius, Scalar(255,255,0), 3, LINE_AA);
             // print circle data to terminal
             //printf("[%lu-%lu]: (%d, %d) r=%d\n", i, j, c[0], c[1], c[2]);
         }
