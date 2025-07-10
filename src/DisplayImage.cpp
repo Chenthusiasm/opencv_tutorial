@@ -144,8 +144,7 @@ static void drawTrackingBox(const cv::Rect& roi, cv::Mat& frame) {
     cv::rectangle(frame, roi, cv::Scalar(255, 255, 0), 2, 1);
 }
 
-int main(int argc, char** argv)
-{
+int main(int argc, char** argv) {
   	// show help
   	if(argc<2){
     	cout<<
