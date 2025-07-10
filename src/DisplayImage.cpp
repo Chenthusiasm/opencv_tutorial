@@ -1,5 +1,6 @@
 // https://docs.opencv.org/4.5.5/d4/d70/tutorial_hough_circle.html
 
+#include "Definitions.h"
 #include "DisplayImage.h"
 
 using namespace std;
@@ -11,8 +12,101 @@ static string const redChannelTitle = "red channel";
 static string const subImageTitle = "sub image";
 
 // note that the K size must be an odd number
-static int const blurKSize = 11;
-static int const subImageBorder = 0;
+static int const BlurKSize = 11;
+static int const SubImageBorder = 0;
+static double const ActivePercentThreshold = 0.25;
+
+enum ProgramState {
+    running,
+    paused,
+    quit
+};
+
+enum DetectState {
+    search,
+    track
+};
+
+static ProgramState processKey(ProgramState currentState) {
+    ProgramState newState = currentState;
+    int key = cv::waitKey(1);
+    switch (key) {
+        case ' ':
+            if (currentState == running) {
+                return paused;
+            } else if (currentState == paused) {
+                return running;
+            }
+            break;
+        case 27:
+            return quit;
+        default:
+            ; // do nothing
+    }
+    return newState;
+}
+
+static void findRedCircles(cv::Mat const& src, vector<cv::Vec3f>& circles) {
+    cv::Mat gray;
+    //Mat redChannel;
+    cv::Mat blurred;
+    #if 1
+    vector<cv::Mat> channels(NumberOfColors);
+    split(src, channels);
+    //cv::imshow("red", channels[red]);
+    cv::medianBlur(channels[red], blurred, BlurKSize);
+    #else
+    cv::cvtColor(frame, gray, COLOR_BGR2GRAY);
+    //cv::imshow(grayscaleTitle, gray);
+    cv::medianBlur(gray, blurred, blurKSize);
+    #endif
+    //cv::imshow(blurredTitle, blurred);
+
+    cv::HoughCircles(blurred, circles, cv::HOUGH_GRADIENT, 1,
+        blurred.rows/10,
+        90, 90/3, 10, 300
+    );
+}
+
+static int findBestMatch(cv::Mat const& src, vector<cv::Vec3f> const& circles) {
+    int circleIndex = -1;
+    if (circles.size() <= 0) {
+        return circleIndex;
+    }
+    double maxActivePercent = 0.0;
+    for(size_t i = 0; i < circles.size(); ++i) {
+        cv::Vec3i c = circles[i];
+        
+        // verify that each circle falls within the color thresholds
+        int width = (c[2] + SubImageBorder) * 2;
+        int height = (c[2] + SubImageBorder) * 2;
+        int x = max(c[0] - (c[2] + SubImageBorder), 0);
+        int y = max(c[1] - (c[2] + SubImageBorder), 0);
+        if ((x + width) >= src.cols) {
+            width = max(src.cols - x - 1, 0);
+        }
+        if ((y + height) >= src.rows) {
+            height = max(src.rows - y - 1, 0);
+        }
+        // create a cropped sub-image
+        cv::Mat subSrc = src(cv::Rect(x, y, width, height));
+        // invert the image
+        cv::Mat inverseSrc = ~subSrc;
+        // convert image to HSV color
+        cv::Mat inverseHSV;
+        cv::cvtColor(inverseSrc, inverseHSV, cv::COLOR_BGR2HSV);
+        cv::Mat mask;
+        inRange(inverseHSV, cv::Scalar(90 - 10, 64, 32), cv::Scalar(90 + 10, 255, 255), mask);
+        int count = countNonZero(mask);
+        size_t pixels = inverseHSV.total();
+        double activePercent = (double)count / (double)pixels;
+        if ((activePercent > ActivePercentThreshold) && (activePercent > maxActivePercent)) {
+            maxActivePercent = activePercent;
+            circleIndex = i;
+        }
+    }
+    return circleIndex;
+}
 
 int main(int argc, char** argv)
 {
@@ -33,8 +127,20 @@ int main(int argc, char** argv)
 	// set input video
 	std::string video = argv[1];
 	cv::VideoCapture cap(video);
+
+    ProgramState state = running;
     
-    for (size_t i = 0; ; ++i) {
+    for ( ; ; ) {
+        state = processKey(state);
+        if (state == quit) {
+            break;
+        }
+        if (state == paused) {
+            // show the image
+            cv::imshow(detectedCirclesTitle, frame);
+            continue;
+        }
+
         cap >> frame;
 
         // stop the program if there are no more images
@@ -42,82 +148,23 @@ int main(int argc, char** argv)
             break;
         }
 
-        cv::Mat gray;
-        //Mat redChannel;
-        cv::Mat blurred;
-        #if 1
-        vector<cv::Mat> channels(3);
-        split(frame, channels);
-        //cv::imshow("red", channels[2]);
-        cv::medianBlur(channels[2], blurred, blurKSize);
-        #else
-        cv::cvtColor(frame, gray, COLOR_BGR2GRAY);
-        //cv::imshow(grayscaleTitle, gray);
-        cv::medianBlur(gray, blurred, blurKSize);
-        #endif
-        //cv::imshow(blurredTitle, blurred);
-
         vector<cv::Vec3f> circles;
-        cv::HoughCircles(blurred, circles, cv::HOUGH_GRADIENT, 1,
-            blurred.rows/10,
-            90, 90/3, 10, 300
-        );
+        findRedCircles(frame, circles);
 
-        for(size_t j = 0; j < circles.size(); ++j) {
-            cv::Vec3i c = circles[j];
-            
-            // verify that each circle falls within the color thresholds
-            int width = (c[2] + subImageBorder) * 2;
-            int height = (c[2] + subImageBorder) * 2;
-            int x = max(c[0] - (c[2] + subImageBorder), 0);
-            int y = max(c[1] - (c[2] + subImageBorder), 0);
-            if ((x + width) >= frame.cols) {
-                width = max(frame.cols - x - 1, 0);
-            }
-            if ((y + height) >= frame.rows) {
-                height = max(frame.rows - y - 1, 0);
-            }
-            if ((width <= 0) || (height <= 0)) {
-                printf("ERROR: (x, y) = (%d, %d) width = %d, height = %d\n", x, y, width, height);
-            }
-            // create a cropped sub-image
-            cv::Mat subImage = frame(cv::Rect(x, y, width, height));
-            // invert the image
-            cv::Mat inverseImage = ~subImage;
-            // convert image to HSV color
-            cv::Mat inverseHSV;
-            cv::cvtColor(inverseImage, inverseHSV, cv::COLOR_BGR2HSV);
-            cv::Mat mask;
-            inRange(inverseHSV, cv::Scalar(90 - 10, 64, 32), cv::Scalar(90 + 10, 255, 255), mask);
-            int count = countNonZero(mask);
-            size_t pixels = inverseHSV.total();
-            double activePercent = (double)count / (double)pixels;
-            //printf("[%lu-%lu]: %d / %ld = %0.3lf%%\n", i, j, count, pixels, activePercent);
-            if (activePercent < 0.25) {
-                continue;
-            }
+        int circleIndex = findBestMatch(frame, circles);
 
-            // imshow(subImageTitle, subImage);
-            // if ((activePercent > 0.10) && (activePercent < 0.50)) {
-            //     cv::waitKey(0);
-            // }
-
+        if (circleIndex >= 0) {
+            cv::Vec3i c = circles[circleIndex];
             // circle center
             cv::Point center = cv::Point(c[0], c[1]);
             cv::circle(frame, center, 1, cv::Scalar(0,255,0), 3, cv::LINE_AA);
             // circle outline
             int radius = c[2];
             cv::circle(frame, center, radius, cv::Scalar(255,255,0), 3, cv::LINE_AA);
-            // print circle data to terminal
-            //printf("[%lu-%lu]: (%d, %d) r=%d\n", i, j, c[0], c[1], c[2]);
         }
 
         // show the image
         cv::imshow(detectedCirclesTitle, frame);
-        // quit on ESC button
-        if (cv::waitKey(1) == 27) {
-            break;
-        }
     }
     return EXIT_SUCCESS;
 }
