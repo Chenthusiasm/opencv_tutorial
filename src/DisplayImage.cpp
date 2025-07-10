@@ -14,7 +14,6 @@ static string const subImageTitle = "sub image";
 static int const blurKSize = 11;
 static int const subImageBorder = 0;
 
-
 int main(int argc, char** argv)
 {
   	// show help
@@ -59,7 +58,7 @@ int main(int argc, char** argv)
         //cv::imshow(blurredTitle, blurred);
 
         vector<cv::Vec3f> circles;
-        HoughCircles(blurred, circles, cv::HOUGH_GRADIENT, 1,
+        cv::HoughCircles(blurred, circles, cv::HOUGH_GRADIENT, 1,
             blurred.rows/10,
             90, 90/3, 10, 300
         );
