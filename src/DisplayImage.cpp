@@ -56,9 +56,9 @@ static void findRedCircles(cv::Mat const& src, vector<cv::Vec3f>& circles) {
     //cv::imshow("red", channels[red]);
     cv::medianBlur(channels[red], blurred, BlurKSize);
     #else
-    cv::cvtColor(frame, gray, COLOR_BGR2GRAY);
+    cv::cvtColor(src, gray, cv::COLOR_BGR2GRAY);
     //cv::imshow(grayscaleTitle, gray);
-    cv::medianBlur(gray, blurred, blurKSize);
+    cv::medianBlur(gray, blurred, BlurKSize);
     #endif
     //cv::imshow(blurredTitle, blurred);
 
@@ -68,7 +68,7 @@ static void findRedCircles(cv::Mat const& src, vector<cv::Vec3f>& circles) {
     );
 }
 
-static int findBestMatch(cv::Mat const& src, vector<cv::Vec3f> const& circles) {
+static int __attribute__((unused)) findBestMatch(cv::Mat const& src, vector<cv::Vec3f> const& circles) {
     int circleIndex = -1;
     if (circles.size() <= 0) {
         return circleIndex;
@@ -151,9 +151,13 @@ int main(int argc, char** argv)
         vector<cv::Vec3f> circles;
         findRedCircles(frame, circles);
 
+        #if 1
         int circleIndex = findBestMatch(frame, circles);
 
         if (circleIndex >= 0) {
+        #else
+        for (size_t circleIndex = 0; circleIndex < circles.size(); ++circleIndex) {
+        #endif
             cv::Vec3i c = circles[circleIndex];
             // circle center
             cv::Point center = cv::Point(c[0], c[1]);
