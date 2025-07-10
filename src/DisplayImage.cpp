@@ -3,7 +3,33 @@
 #include "DisplayImage.h"
 
 using namespace std;
-using namespace cv;
+
+static string const trackerTitle = "tracker";
+
+enum ProgramState {
+    running,
+    paused,
+    quit
+};
+
+static ProgramState processKey(ProgramState currentState) {
+    ProgramState newState = currentState;
+    int key = cv::waitKey(1);
+    switch (key) {
+        case ' ':
+            if (currentState == running) {
+                return paused;
+            } else if (currentState == paused) {
+                return running;
+            }
+            break;
+        case 27:
+            return quit;
+        default:
+            ; // do nothing
+    }
+    return newState;
+}
 
 int main( int argc, char** argv ){
   	// show help
@@ -17,24 +43,34 @@ int main( int argc, char** argv ){
     	return 0;
 	}
 	// declares all required variables
-	Rect roi;
-	Mat frame;
+	cv::Rect roi;
+	cv::Mat frame;
 	// create a tracker object
-	Ptr<Tracker> tracker = TrackerKCF::create();
+	cv::Ptr<cv::Tracker> tracker = cv::TrackerKCF::create();
 	// set input video
-	std::string video = argv[1];
-	VideoCapture cap(video);
+	string video = argv[1];
+	cv::VideoCapture cap(video);
 	// get bounding box
 	cap >> frame;
-	roi=selectROI("tracker",frame);
+	roi = cv::selectROI(trackerTitle,frame);
 	//quit if ROI was not selected
 	if(roi.width==0 || roi.height==0)
 		return 0;
 	// initialize the tracker
 	tracker->init(frame,roi);
 	// perform the tracking process
-	printf("Start the tracking process, press ESC to quit.\n");
+	cout << "Start the tracking process, press ESC to quit.\n";
+    ProgramState programState = running;
 	for ( ;; ){
+        programState = processKey(programState);
+        if (programState == quit) {
+            break;
+        }
+        if (programState == paused) {
+            // show the image
+            cv::imshow(trackerTitle, frame);
+            continue;
+        }
 		// get frame from the video
 		cap >> frame;
 		// stop the program if no more images
@@ -43,11 +79,8 @@ int main( int argc, char** argv ){
 		// update the tracking result
 		tracker->update(frame,roi);
 		// draw the tracked object
-		rectangle( frame, roi, Scalar( 255, 0, 0 ), 2, 1 );
-		// show image with the tracked object
-		imshow("tracker",frame);
-		//quit on ESC button
-		if(waitKey(1)==27)break;
+		cv::rectangle( frame, roi, cv::Scalar( 255, 0, 0 ), 2, 1 );
+        cv::imshow(trackerTitle, frame);
 	}
 	return 0;
 }
